@@ -1,13 +1,56 @@
 import { ChangeEvent, FormEvent, useMemo, useRef, useState } from 'react'
 import { FileVideo, Upload } from 'lucide-react'
+import { fetchFile } from '@ffmpeg/util'
+
 import { Separator } from './ui/separator'
 import { Label } from './ui/label'
 import { Textarea } from './ui/textarea'
 import { Button } from './ui/button'
 
+import { getFFmpeg } from '@/lib/ffmpeg'
+
 export function VideoInputForm() {
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const promptInputRef = useRef<HTMLTextAreaElement>(null)
+
+  async function convertVideoToAudio(video: File) {
+    console.log('Convert started.')
+
+    const ffmpeg = await getFFmpeg()
+
+    await ffmpeg.writeFile('input.mp4', await fetchFile(video))
+
+    /* ffmpeg.on('log', log => {
+      console.log(log)
+    }) */
+
+    ffmpeg.on('progress', progress => {
+      console.log('Convert progress: ', Math.round(progress.progress * 100))
+    })
+
+    await ffmpeg.exec([
+      '-i',
+      'input.mp4',
+      '-map',
+      '0:a',
+      '-b:a',
+      '20k',
+      '-acodec',
+      'libmp3lame',
+      'output.mp3',
+    ])
+
+    const data = await ffmpeg.readFile('output.mp3')
+
+    const audioFileBlob = new Blob([data], { type: 'audio/mpeg' })
+    const audioFile = new File([audioFileBlob], 'output.mp3', {
+      type: 'audio/mpeg'
+    })
+
+    console.log('Convert finished')
+
+    return audioFile
+  }
 
   function handleFileSelected(e: ChangeEvent<HTMLInputElement>) {
     const { files } = e.currentTarget
@@ -25,7 +68,7 @@ export function VideoInputForm() {
     return URL.createObjectURL(videoFile)
   }, [videoFile])
 
-  function handleUploadVideo(e: FormEvent<HTMLFormElement>) {
+  async function handleUploadVideo(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
     const prompt = promptInputRef.current?.value
@@ -33,7 +76,10 @@ export function VideoInputForm() {
     if (!videoFile) return
 
     // converter o vídeo em audio
-    
+    const audioFile = await convertVideoToAudio(videoFile)
+
+    console.log(audioFile, prompt)
+
   }
 
   return (
