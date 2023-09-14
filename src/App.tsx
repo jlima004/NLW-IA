@@ -1,21 +1,45 @@
-import { Github, Wand2 } from "lucide-react";
+import { useState } from 'react'
+import { Github, Wand2 } from 'lucide-react'
+import { useCompletion } from 'ai/react'
 
-import { Button } from "./components/ui/button";
-import { Separator } from "./components/ui/separator";
-import { Textarea } from "./components/ui/textarea";
-import { Label } from "./components/ui/label";
+import { Button } from './components/ui/button'
+import { Separator } from './components/ui/separator'
+import { Textarea } from './components/ui/textarea'
+import { Label } from './components/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./components/ui/select";
-import { Slider } from "./components/ui/slider";
+} from './components/ui/select'
+import { Slider } from './components/ui/slider'
 
-import { VideoInputForm } from "./components/video-input-form";
+import { VideoInputForm } from './components/video-input-form'
+import { PromptSelect } from './components/prompt-select'
 
 export function App() {
+  const [temperature, setTemperature] = useState<number>(0.5)
+  const [videoId, setVideoId] = useState<string | null>(null)
+
+  const {
+    input,
+    setInput,
+    handleInputChange,
+    handleSubmit,
+    completion,
+    isLoading,
+  } = useCompletion({
+    api: 'http://localhost:3333/ai/generate',
+    body: {
+      videoId,
+      temperature,
+    },
+    headers: {
+      'Content-Type': 'application/json'
+    },
+  })
+
   return (
     <div className="min-h-screen flex flex-col">
       <div className="px-6 py-3 flex items-center justify-between border-b">
@@ -28,7 +52,7 @@ export function App() {
 
           <Separator orientation="vertical" className="h-6" />
 
-          <Button variant={"outline"}>
+          <Button variant={'outline'}>
             <Github className="w-4 h-16 mr-2" />
             Github
           </Button>
@@ -41,42 +65,36 @@ export function App() {
             <Textarea
               placeholder="Inclua o prompt para a IA..."
               className="resize-none p-4 leading-relaxed"
+              value={input}
+              onChange={handleInputChange}
             />
 
             <Textarea
               placeholder="Resultado gerado pela IA..."
               className="resize-none p-4 leading-relaxed"
               readOnly
+              value={completion}
             />
           </div>
 
           <p className="text-sm text-muted-foreground">
-            Lembre-se: você pode usar a variável{" "}
-            <code className="text-primary">{"{transcription}"}</code> no seu
+            Lembre-se: você pode usar a variável{' '}
+            <code className="text-primary">{'{transcription}'}</code> no seu
             prompt para adicionar o conteúdo da transcrição do video
             selecionado.
           </p>
         </div>
 
         <aside className="w-72 space-y-6">
-          <VideoInputForm />
+          <VideoInputForm onVideoUploaded={setVideoId} />
 
           <Separator />
 
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <Label>Prompt</Label>
 
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um prompt..." />
-                </SelectTrigger>
-
-                <SelectContent>
-                  <SelectItem value="title">Título do YouTube</SelectItem>
-                  <SelectItem value="description">Descrição do YouTube</SelectItem>
-                </SelectContent>
-              </Select>
+              <PromptSelect onPromptSelected={setInput} />
             </div>
 
             <div className="space-y-2">
@@ -102,7 +120,13 @@ export function App() {
             <div className="space-y-2">
               <Label>Temperatura</Label>
 
-              <Slider min={0} max={1} step={0.1} />
+              <Slider
+                min={0}
+                max={1}
+                step={0.1}
+                value={[temperature]}
+                onValueChange={(value) => setTemperature(value[0])}
+              />
 
               <span className="block text-xs text-muted-foreground italic leading-relaxed">
                 Valores mais altos tendem a deixar o resultado mais criativo e
@@ -111,7 +135,7 @@ export function App() {
 
               <Separator />
 
-              <Button type="submit" className="w-full">
+              <Button disabled={isLoading} type="submit" className="w-full">
                 Executar
                 <Wand2 className="w-4 h-4 ml-2" />
               </Button>
@@ -120,5 +144,5 @@ export function App() {
         </aside>
       </main>
     </div>
-  );
+  )
 }
